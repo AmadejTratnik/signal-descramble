@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Descrambler</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #081b34;
+      color: white;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #introScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(ellipse at center, #001726 0%, #000a14 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      animation: introFadeIn 1.5s ease-out forwards;
+    }
+
+    @keyframes introFadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    #introScreen h1 {
+      font-size: 3rem;
+      font-family: 'Orbitron', sans-serif;
+      color: #00ffff;
+      letter-spacing: 6px;
+      margin-bottom: 15px;
+      text-shadow: 0 0 10px #00ffff88, 0 0 20px #00ffff55;
+    }
+
+    #introScreen p {
+      font-size: 1.4rem;
+      color: #00cccc;
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+      text-shadow: 0 0 5px #00cccc55;
+    }
+
+    #descrambleBtn {
+      background: transparent;
+      border: 2px solid #00ffff;
+      padding: 12px 28px;
+      font-size: 1.2rem;
+      font-family: 'Orbitron', sans-serif;
+      color: #00ffff;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 8px #00ffff88, 0 0 20px #00ffff44 inset;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.25s ease-in-out;
+    }
+
+    #descrambleBtn:hover {
+      background: linear-gradient(135deg, #00ffff 0%, #00ffaa 100%);
+      color: #000;
+      box-shadow: 0 0 12px #00ffffcc, 0 0 25px #00ffaa88 inset;
+      transform: scale(1.05);
+    }
+
+    @media (max-width: 768px) {
+      #introScreen h1 {
+        font-size: 2rem;
+        letter-spacing: 3px;
+      }
+
+      #introScreen p {
+        font-size: 1rem;
+        letter-spacing: 1px;
+      }
+
+      #descrambleBtn {
+        padding: 10px 20px;
+        font-size: 1rem;
+      }
+    }
+
+    #progressBarContainer {
+      width: 80%;
+      height: 20px;
+      background: #02203d;
+      border: none;
+      margin-top: 30px;
+      overflow: hidden;
+      display: none;
+    }
+
+    #progressBar {
+      height: 100%;
+      width: 0%;
+      background: #00ffff;
+      transition: width 0.2s ease;
+    }
+
+    #gameScreen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding-top: 20px;
+      height: 100%;
+      position: relative;
+    }
+
+    canvas {
+      background: #021d38;
+      /* a bit darker blue */
+      border: none;
+      border-radius: 10px;
+      width: 90vw;
+      max-width: 600px;
+      height: auto;
+      box-shadow: 0 0 20px #00ffff44;
+      /* blueish glow */
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 90vw;
+      max-width: 400px;
+    }
+
+    .control {
+      width: 100%;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #00ffff;
+    }
+
+    #matchFlash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 255, 0, 0.2);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      z-index: 10;
+    }
+
+    #accessGranted {
+      position: absolute;
+      top: 80%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      color: #00ffff;
+      background: rgba(0, 255, 0, 0.1);
+      padding: 20px 40px;
+      border: 2px solid #00ffff;
+      border-radius: 10px;
+      opacity: 0;
+      transition: opacity 1s ease;
+      pointer-events: none;
+      z-index: 20;
+      text-shadow: 0 0 10px #00ffff;
+      letter-spacing: 3px;
+    }
+
+    #accessGranted.show {
+      opacity: 1;
+    }
+
+    .info {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 1rem;
+      color: #00ffff;
+      max-width: 90vw;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="introScreen">
+    <h1>OSCORP</h1>
+    <p>CORRUPT SIGNAL DETECTED</p>
+    <button id="descrambleBtn">PRESS TO DESCRAMBLE</button>
+    <div id="progressBarContainer">
+      <div id="progressBar"></div>
+    </div>
+  </div>
+
+  <div id="gameScreen">
+    <div id="matchFlash"></div>
+    <canvas id="waveCanvas"></canvas>
+
+    <div class="controls">
+      <div class="control">
+        <label for="frequency">Frequency</label>
+        <input type="range" id="frequency" min="1" max="20" value="10" step="0.1" />
+      </div>
+      <div class="control">
+        <label for="amplitude">Amplitude</label>
+        <input type="range" id="amplitude" min="10" max="100" value="50" />
+      </div>
+    </div>
+
+    <div class="info">
+      <p><strong>Objective:</strong> Tune your wave to match the targets frequency.</p>
+    </div>
+
+    <div id="accessGranted">ACCESS GRANTED</div>
+  </div>
+
+  <script>
+    const introScreen = document.getElementById('introScreen');
+    const descrambleBtn = document.getElementById('descrambleBtn');
+    const progressBarContainer = document.getElementById('progressBarContainer');
+    const progressBar = document.getElementById('progressBar');
+    const gameScreen = document.getElementById('gameScreen');
+    const accessGranted = document.getElementById('accessGranted');
+    const canvas = document.getElementById('waveCanvas');
+    const ctx = canvas.getContext('2d');
+    const freqSlider = document.getElementById('frequency');
+    const ampSlider = document.getElementById('amplitude');
+    const matchFlash = document.getElementById('matchFlash');
+
+    let target = {
+      frequency: Math.random() * 19 + 1,  // Random between 1 and 20
+      amplitude: Math.random() * 50 + 10  // Random between 10 and 100
+    };
+    freqSlider.value = (Math.random() * 19 + 1).toFixed(1);
+    ampSlider.value = (Math.random() * 90 + 10).toFixed(0);
+
+    let phase = 0;
+    let locked = false;
+    let flashTriggered = false;
+
+    // Web Audio
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    const noiseGain = audioCtx.createGain();
+    const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+    const outputMerger = audioCtx.createGain();
+
+    // Fill noise buffer
+    let data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    const noiseSource = audioCtx.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+    noiseSource.loop = true;
+
+    oscillator.type = 'square';
+    oscillator.frequency.value = 440;
+    oscillator.start();
+
+    noiseSource.connect(noiseGain);
+    oscillator.connect(gainNode);
+    noiseGain.connect(outputMerger);
+    gainNode.connect(outputMerger);
+    outputMerger.connect(audioCtx.destination);
+
+    noiseSource.start();
+
+    function updateAudio(freq, amp) {
+      const freqMatch = 1 - Math.abs(freq - target.frequency) / 20;
+      const ampMatch = 1 - Math.abs(amp - target.amplitude) / 100;
+      const matchLevel = Math.min(freqMatch, ampMatch);
+
+      oscillator.frequency.value = freq * 30 + 100;
+      gainNode.gain.value = 0.05 + 0.1 * matchLevel;
+      noiseGain.gain.value = 0.5 - 0.45 * matchLevel;
+    }
+
+    function triggerFlash() {
+      matchFlash.style.opacity = 1;
+      setTimeout(() => { matchFlash.style.opacity = 0; }, 500);
+    }
+
+    function showAccessGranted() {
+      accessGranted.classList.add('show');
+    }
+
+    function resizeCanvas() {
+      const width = Math.min(window.innerWidth * 0.9, 600);
+      canvas.width = width;
+      canvas.height = width / 3;
+    }
+
+    function drawWaves() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const userFreq = parseFloat(freqSlider.value);
+      const userAmp = parseFloat(ampSlider.value);
+      const padding = 10;
+      const maxAmplitude = canvas.height / 2 - padding;
+
+      const scaledUserAmp = (userAmp / 100) * maxAmplitude;
+      const scaledTargetAmp = (target.amplitude / 100) * maxAmplitude;
+
+      let totalDiff = 0;
+      let sampleCount = 0;
+
+      // --- Draw Target Wave (red, thick) ---
+      ctx.beginPath();
+      ctx.strokeStyle = '#cc1122'; // red
+      ctx.lineWidth = 4; // thick
+      for (let x = 0; x < canvas.width; x++) {
+        const y = canvas.height / 2 + scaledTargetAmp * Math.sin((x / 50) * target.frequency + phase);
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // --- Draw User Wave (thin blue, or green if locked) ---
+      ctx.beginPath();
+      ctx.strokeStyle = locked ? 'lime' : '#00ffff'; // green when locked, blue otherwise
+      ctx.lineWidth = locked ? 6 : 2; // match thickness when locked
+      for (let x = 0; x < canvas.width; x++) {
+        const targetY = canvas.height / 2 + scaledTargetAmp * Math.sin((x / 50) * target.frequency + phase);
+        const userY = canvas.height / 2 + scaledUserAmp * Math.sin((x / 50) * userFreq + phase);
+        totalDiff += Math.abs(userY - targetY);
+        sampleCount++;
+        if (x === 0) ctx.moveTo(x, userY);
+        else ctx.lineTo(x, userY);
+      }
+      ctx.stroke();
+
+      const avgDiff = Math.sqrt(Math.pow(userFreq - target["frequency"],2) + Math.pow(userAmp - target["amplitude"],2));
+      console.log(avgDiff)
+
+      updateAudio(userFreq, userAmp);
+
+      if (!locked && avgDiff < 1) {
+        locked = true;
+        freqSlider.disabled = true;
+        ampSlider.disabled = true;
+        if (!flashTriggered) {
+          triggerFlash();
+          showAccessGranted();
+          flashTriggered = true;
+        }
+      }
+    }
+
+    function loop() {
+      phase += 0.05;
+      drawWaves();
+      requestAnimationFrame(loop);
+    }
+
+    descrambleBtn.addEventListener('click', () => {
+      descrambleBtn.style.display = 'none';
+      progressBarContainer.style.display = 'block';
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random(1,10);
+        progressBar.style.width = progress + '%';
+        if (progress >= 100) {
+          clearInterval(interval);
+          introScreen.style.display = 'none';
+          gameScreen.style.display = 'flex';
+          audioCtx.resume();
+        }
+      }, 10);
+    });
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      drawWaves();
+    });
+
+    freqSlider.addEventListener('input', drawWaves);
+    ampSlider.addEventListener('input', drawWaves);
+    resizeCanvas();
+    loop();
+  </script>
+</body>
+
+</html>
