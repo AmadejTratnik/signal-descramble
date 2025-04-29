@@ -410,6 +410,12 @@
     ampSlider.addEventListener('input', drawWaves);
     resizeCanvas();
     loop();
+
+    window.addEventListener('scroll', function () {
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+      location.reload(); // Reload the page
+    }
+  });
   </script>
 </body>
 
